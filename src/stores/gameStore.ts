@@ -286,7 +286,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativeTimerSeconds: 0,
     // Maze
     mazeSize: 6,
-    mazeMoves: 30,
+    mazeMoves: 60,
     mazeFog: false,
     mazeMovingWalls: false,
     // Riddles
@@ -356,7 +356,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativeTimerSeconds: 90,
     // Maze
     mazeSize: 8,
-    mazeMoves: 20,
+    mazeMoves: 50,
     mazeFog: false,
     mazeMovingWalls: true,
     // Riddles
@@ -426,7 +426,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativeTimerSeconds: 60,
     // Maze
     mazeSize: 10,
-    mazeMoves: 15,
+    mazeMoves: 35,
     mazeFog: true,
     mazeMovingWalls: true,
     // Riddles
