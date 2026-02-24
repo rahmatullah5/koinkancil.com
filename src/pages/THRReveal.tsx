@@ -1192,6 +1192,29 @@ export function THRReveal() {
             style={{ zIndex: 10, maxWidth: "400px", width: "100%" }}
           >
             <LuckyWheel onComplete={handleWheelComplete} />
+            <motion.button
+              onClick={() => {
+                setWheelSpun();
+                setStage("drawing");
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                display: "block",
+                margin: "16px auto 0",
+                background: "none",
+                border: "none",
+                color: "var(--color-text-secondary)",
+                cursor: "pointer",
+                fontFamily: "Nunito, sans-serif",
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                textDecoration: "underline",
+                opacity: 0.7,
+              }}
+            >
+              ⏭️ Lewati, lanjut tanpa bonus
+            </motion.button>
           </motion.div>
         )}
 
