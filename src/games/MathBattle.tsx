@@ -13,7 +13,90 @@ import { soundManager } from "../utils/soundManager";
 
 const MONSTERS = ["👾", "👹", "🐲", "👻", "🤖", "🧟", "👿"];
 
+/**
+ * Generate a math question. For minOps > 1, we chain operations left-to-right.
+ * E.g. minOps=2 → "3 + 5 × 2 = ?" evaluated left-to-right → (3+5)×2 = 16
+ * minOps=4 → "8 + 3 × 2 - 4 ÷ 2 = ?" evaluated L→R
+ */
 function generateMathQ(
+  maxNum: number,
+  ops: string[],
+  optionCount: number,
+  minOps: number,
+): {
+  question: string;
+  answer: number;
+  options: number[];
+} {
+  if (minOps <= 1) {
+    // Single operation (SD mode)
+    return generateSingleOp(maxNum, ops, optionCount);
+  }
+
+  // Multi-operation chain evaluated left-to-right
+  const numOps = minOps + Math.floor(Math.random() * 2); // minOps or minOps+1
+  let result = Math.floor(Math.random() * Math.min(maxNum, 20)) + 1;
+  let expression = `${result}`;
+
+  for (let i = 0; i < numOps; i++) {
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let operand: number;
+
+    switch (op) {
+      case "-":
+        operand = Math.floor(Math.random() * Math.min(result, 15)) + 1;
+        result = result - operand;
+        break;
+      case "×":
+        operand = Math.floor(Math.random() * 5) + 2;
+        result = result * operand;
+        break;
+      case "÷": {
+        // Find a divisor that works cleanly
+        const divisors = [];
+        for (let d = 2; d <= Math.min(result, 10); d++) {
+          if (result % d === 0) divisors.push(d);
+        }
+        if (divisors.length > 0) {
+          operand = divisors[Math.floor(Math.random() * divisors.length)];
+          result = result / operand;
+        } else {
+          // Fallback to addition
+          operand = Math.floor(Math.random() * 10) + 1;
+          result = result + operand;
+          expression += ` + ${operand}`;
+          continue;
+        }
+        break;
+      }
+      default: // +
+        operand = Math.floor(Math.random() * Math.min(maxNum, 20)) + 1;
+        result = result + operand;
+        break;
+    }
+    expression += ` ${op} ${operand}`;
+  }
+
+  // Ensure result is reasonable (positive, not too large)
+  if (result < 0 || result > 999) {
+    return generateMathQ(maxNum, ops, optionCount, minOps);
+  }
+
+  const answer = result;
+  const wrongSet = new Set<number>();
+  while (wrongSet.size < optionCount - 1) {
+    const offset =
+      Math.floor(Math.random() * Math.max(8, Math.abs(answer / 5))) + 1;
+    const wrong =
+      Math.random() > 0.5 ? answer + offset : Math.max(0, answer - offset);
+    if (wrong !== answer && wrong >= 0) wrongSet.add(wrong);
+  }
+
+  const options = [answer, ...wrongSet].sort(() => Math.random() - 0.5);
+  return { question: `${expression} = ?`, answer, options };
+}
+
+function generateSingleOp(
   maxNum: number,
   ops: string[],
   optionCount: number,
@@ -23,7 +106,6 @@ function generateMathQ(
   options: number[];
 } {
   const op = ops[Math.floor(Math.random() * ops.length)];
-
   let a: number, b: number, answer: number;
 
   switch (op) {
@@ -42,7 +124,7 @@ function generateMathQ(
       answer = Math.floor(Math.random() * 10) + 1;
       a = b * answer;
       break;
-    default: // +
+    default:
       a = Math.floor(Math.random() * maxNum) + 1;
       b = Math.floor(Math.random() * maxNum) + 1;
       answer = a + b;
@@ -57,7 +139,6 @@ function generateMathQ(
   }
 
   const options = [answer, ...wrongSet].sort(() => Math.random() - 0.5);
-
   return { question: `${a} ${op} ${b} = ?`, answer, options };
 }
 
@@ -66,7 +147,12 @@ export function MathBattle() {
   const config = getDifficultyConfig();
   const [round, setRound] = useState(0);
   const [problem, setProblem] = useState(() =>
-    generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+    generateMathQ(
+      config.mathMaxNum,
+      config.mathOps,
+      config.mathOptions,
+      config.mathMinOps,
+    ),
   );
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -83,7 +169,12 @@ export function MathBattle() {
     } else {
       setRound((r) => r + 1);
       setProblem(
-        generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+        generateMathQ(
+          config.mathMaxNum,
+          config.mathOps,
+          config.mathOptions,
+          config.mathMinOps,
+        ),
       );
       setFeedback(null);
       setMonster(MONSTERS[(round + 1) % MONSTERS.length]);
@@ -111,7 +202,12 @@ export function MathBattle() {
   const handleRetry = () => {
     setRound(0);
     setProblem(
-      generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+      generateMathQ(
+        config.mathMaxNum,
+        config.mathOps,
+        config.mathOptions,
+        config.mathMinOps,
+      ),
     );
     setFeedback(null);
     setMonster(MONSTERS[0]);
@@ -233,17 +329,37 @@ export function MathBattle() {
               marginBottom: "8px",
             }}
           >
-            Monster bertanya:
+            {config.mathMinOps > 1
+              ? "Monster memberi soal berantai:"
+              : "Monster bertanya:"}
           </p>
           <p
             style={{
-              fontSize: "2.2rem",
+              fontSize:
+                config.mathMinOps >= 4
+                  ? "1.4rem"
+                  : config.mathMinOps >= 2
+                    ? "1.8rem"
+                    : "2.2rem",
               fontWeight: 900,
               color: "var(--color-accent)",
+              wordBreak: "break-word",
             }}
           >
             {problem.question}
           </p>
+          {config.mathMinOps > 1 && (
+            <p
+              style={{
+                color: "var(--color-text-secondary)",
+                fontSize: "0.75rem",
+                marginTop: "6px",
+                opacity: 0.7,
+              }}
+            >
+              💡 Hitung dari kiri ke kanan
+            </p>
+          )}
           <div
             style={{
               position: "absolute",

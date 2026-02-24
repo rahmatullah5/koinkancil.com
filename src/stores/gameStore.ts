@@ -66,6 +66,7 @@ export interface DifficultyConfig {
   mathOps: string[];
   mathOptions: number;
   mathRounds: number;
+  mathMinOps: number;
   // Color/Shape
   colorShadowCount: number;
   colorRounds: number;
@@ -96,6 +97,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     mathOps: ["+", "-"],
     mathOptions: 3,
     mathRounds: 5,
+    mathMinOps: 1,
     colorShadowCount: 3,
     colorRounds: 4,
     memoryPairs: 6,
@@ -121,6 +123,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     mathOps: ["+", "-", "×"],
     mathOptions: 4,
     mathRounds: 6,
+    mathMinOps: 2,
     colorShadowCount: 5,
     colorRounds: 5,
     memoryPairs: 8,
@@ -146,6 +149,7 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     mathOps: ["+", "-", "×", "÷"],
     mathOptions: 4,
     mathRounds: 7,
+    mathMinOps: 4,
     colorShadowCount: 6,
     colorRounds: 6,
     memoryPairs: 10,
@@ -168,6 +172,7 @@ interface GameState {
   currentPage: PageId;
   thrUnlocked: boolean;
   voucherCode: string;
+  wheelSpun: boolean;
 
   // Settings
   soundEnabled: boolean;
@@ -182,6 +187,7 @@ interface GameState {
   setPage: (page: PageId) => void;
   toggleSound: () => void;
   unlockTHR: () => void;
+  setWheelSpun: () => void;
   resetGame: () => void;
 
   // Computed helpers
@@ -211,6 +217,7 @@ export const useGameStore = create<GameState>()(
       currentPage: "landing",
       thrUnlocked: false,
       voucherCode: "",
+      wheelSpun: false,
       soundEnabled: true,
 
       setPlayerName: (name) => set({ playerName: name }),
@@ -256,6 +263,8 @@ export const useGameStore = create<GameState>()(
           voucherCode: generateVoucherCode(),
         }),
 
+      setWheelSpun: () => set({ wheelSpun: true }),
+
       resetGame: () =>
         set({
           playerName: "",
@@ -266,6 +275,7 @@ export const useGameStore = create<GameState>()(
           currentPage: "landing",
           thrUnlocked: false,
           voucherCode: "",
+          wheelSpun: false,
         }),
 
       isIslandUnlocked: (island) => {
