@@ -318,6 +318,34 @@ export function WorldMap() {
       >
         🔄 Mulai Ulang
       </motion.button>
+      <motion.button
+        onClick={() => {
+          soundManager.buttonClick();
+          useGameStore.getState().setPage("leaderboard");
+        }}
+        whileHover={{ scale: 1.05 }}
+        style={{
+          position: "absolute",
+          bottom: "16px",
+          right: "16px",
+          background:
+            "linear-gradient(135deg, rgba(255,217,61,0.15), rgba(108,99,255,0.15))",
+          border: "1px solid rgba(255,217,61,0.3)",
+          borderRadius: "12px",
+          padding: "10px 16px",
+          color: "#FFD93D",
+          cursor: "pointer",
+          fontFamily: "Nunito, sans-serif",
+          fontWeight: 700,
+          fontSize: "0.85rem",
+          zIndex: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+        }}
+      >
+        🏆 Leaderboard
+      </motion.button>
     </div>
   );
 }

@@ -4,7 +4,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type IslandId = "logika" | "warna" | "matematika" | "memori" | "kreatif";
-export type PageId = "landing" | "worldmap" | "game" | "thr-reveal";
+export type PageId =
+  | "landing"
+  | "worldmap"
+  | "game"
+  | "thr-reveal"
+  | "leaderboard";
 export type DifficultyLevel = "elementary" | "junior" | "senior";
 
 export const ISLANDS: {
@@ -173,6 +178,7 @@ interface GameState {
   thrUnlocked: boolean;
   voucherCode: string;
   wheelSpun: boolean;
+  scoreSubmitted: boolean;
 
   // Settings
   soundEnabled: boolean;
@@ -188,6 +194,7 @@ interface GameState {
   toggleSound: () => void;
   unlockTHR: () => void;
   setWheelSpun: () => void;
+  setScoreSubmitted: (v: boolean) => void;
   resetGame: () => void;
 
   // Computed helpers
@@ -218,6 +225,7 @@ export const useGameStore = create<GameState>()(
       thrUnlocked: false,
       voucherCode: "",
       wheelSpun: false,
+      scoreSubmitted: false,
       soundEnabled: true,
 
       setPlayerName: (name) => set({ playerName: name }),
@@ -264,6 +272,7 @@ export const useGameStore = create<GameState>()(
         }),
 
       setWheelSpun: () => set({ wheelSpun: true }),
+      setScoreSubmitted: (v) => set({ scoreSubmitted: v }),
 
       resetGame: () =>
         set({
@@ -276,6 +285,7 @@ export const useGameStore = create<GameState>()(
           thrUnlocked: false,
           voucherCode: "",
           wheelSpun: false,
+          scoreSubmitted: false,
         }),
 
       isIslandUnlocked: (island) => {

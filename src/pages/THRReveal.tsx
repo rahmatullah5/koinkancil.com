@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useGameStore, DIFFICULTY_CONFIGS } from "../stores/gameStore";
+import { submitScore } from "../api/leaderboardApi";
 import { soundManager } from "../utils/soundManager";
 import { FloatingParticles } from "../components/SharedComponents";
 
@@ -808,6 +809,8 @@ export function THRReveal() {
     difficulty,
     wheelSpun,
     setWheelSpun,
+    scoreSubmitted,
+    setScoreSubmitted,
   } = useGameStore();
   const config = DIFFICULTY_CONFIGS[difficulty];
   const [stage, setStage] = useState<
@@ -821,6 +824,15 @@ export function THRReveal() {
       unlockTHR();
     }
   }, []);
+
+  // Auto-submit score to leaderboard
+  useEffect(() => {
+    if (!scoreSubmitted && playerName && coins > 0) {
+      submitScore({ playerName, coins, difficulty })
+        .then(() => setScoreSubmitted(true))
+        .catch((err) => console.error("Leaderboard submit failed:", err));
+    }
+  }, [scoreSubmitted, playerName, coins, difficulty, setScoreSubmitted]);
 
   useEffect(() => {
     if (stage === "drumroll") {
@@ -1261,6 +1273,17 @@ export function THRReveal() {
                 flexWrap: "wrap",
               }}
             >
+              <motion.button
+                className="btn-accent"
+                onClick={() => {
+                  soundManager.buttonClick();
+                  setPage("leaderboard");
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🏆 Lihat Papan Peringkat
+              </motion.button>
               <motion.button
                 className="btn-primary"
                 onClick={() => {

@@ -9,6 +9,7 @@ import { MathBattle } from "./games/MathBattle";
 import { ColorShape } from "./games/ColorShape";
 import { MemoryGame } from "./games/MemoryGame";
 import { CreativeChallenge } from "./games/CreativeChallenge";
+import { Leaderboard } from "./pages/Leaderboard";
 import { AnimatePresence, motion } from "framer-motion";
 import "./index.css";
 
@@ -37,6 +38,8 @@ function GameRouter() {
       return <WorldMap />;
     case "thr-reveal":
       return <THRReveal />;
+    case "leaderboard":
+      return <Leaderboard />;
     default:
       return <LandingPage />;
   }
