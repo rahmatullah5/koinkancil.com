@@ -9,6 +9,18 @@ import { MathBattle } from "./games/MathBattle";
 import { ColorShape } from "./games/ColorShape";
 import { MemoryGame } from "./games/MemoryGame";
 import { CreativeChallenge } from "./games/CreativeChallenge";
+import { MazeHunt } from "./games/MazeHunt";
+import { RiddleWind } from "./games/RiddleWind";
+import { BuildNusantara } from "./games/BuildNusantara";
+import { RhythmTakbir } from "./games/RhythmTakbir";
+import { ColorMix } from "./games/ColorMix";
+import { SecretCode } from "./games/SecretCode";
+import { MysteryTrail } from "./games/MysteryTrail";
+import { NumberWave } from "./games/NumberWave";
+import { StarSpeed } from "./games/StarSpeed";
+import { StoryBranch } from "./games/StoryBranch";
+import { SimonSequence } from "./games/SimonSequence";
+import { SecretMap } from "./games/SecretMap";
 import { Leaderboard } from "./pages/Leaderboard";
 import { AnimatePresence, motion } from "framer-motion";
 import "./index.css";
@@ -28,6 +40,30 @@ function GameRouter() {
         return <MemoryGame />;
       case "kreatif":
         return <CreativeChallenge />;
+      case "labirin":
+        return <MazeHunt />;
+      case "riddle":
+        return <RiddleWind />;
+      case "bangun":
+        return <BuildNusantara />;
+      case "irama":
+        return <RhythmTakbir />;
+      case "eksperimen":
+        return <ColorMix />;
+      case "kode":
+        return <SecretCode />;
+      case "jejak":
+        return <MysteryTrail />;
+      case "gelombang":
+        return <NumberWave />;
+      case "bintang":
+        return <StarSpeed />;
+      case "cerita":
+        return <StoryBranch />;
+      case "urutan":
+        return <SimonSequence />;
+      case "peta":
+        return <SecretMap />;
     }
   }
 

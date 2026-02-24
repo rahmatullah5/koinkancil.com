@@ -2,55 +2,183 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  generatePathGraph,
+  getStartIsland,
+  getNextIslands,
+  type PathGraph,
+} from "../utils/pathGenerator";
 
-export type IslandId = "logika" | "warna" | "matematika" | "memori" | "kreatif";
+// === Island & Page Types ===
+
+export type IslandId =
+  | "logika"
+  | "warna"
+  | "matematika"
+  | "memori"
+  | "kreatif"
+  | "labirin"
+  | "riddle"
+  | "bangun"
+  | "irama"
+  | "eksperimen"
+  | "kode"
+  | "jejak"
+  | "gelombang"
+  | "bintang"
+  | "cerita"
+  | "urutan"
+  | "peta";
+
 export type PageId =
   | "landing"
   | "worldmap"
   | "game"
   | "thr-reveal"
   | "leaderboard";
+
 export type DifficultyLevel = "elementary" | "junior" | "senior";
 
-export const ISLANDS: {
+// === All Islands ===
+
+export interface IslandInfo {
   id: IslandId;
   name: string;
   emoji: string;
   color: string;
-}[] = [
+  description: string;
+}
+
+export const ALL_ISLANDS: IslandInfo[] = [
+  // Original 5
   {
     id: "logika",
     name: "Pulau Logika",
     emoji: "🧠",
-    color: "var(--color-island-logika)",
+    color: "#6C63FF",
+    description: "Tebak pola!",
   },
   {
     id: "warna",
     name: "Pulau Warna",
     emoji: "🎨",
-    color: "var(--color-island-warna)",
+    color: "#FF6B9D",
+    description: "Cocokkan bayangan!",
   },
   {
     id: "matematika",
     name: "Pulau Matematika",
     emoji: "🔢",
-    color: "var(--color-island-math)",
+    color: "#4FC3F7",
+    description: "Lawan monster!",
   },
   {
     id: "memori",
     name: "Pulau Memori",
-    emoji: "🧠",
-    color: "var(--color-island-memori)",
+    emoji: "🃏",
+    color: "#AB47BC",
+    description: "Ingat kartu!",
   },
   {
     id: "kreatif",
     name: "Pulau Kreatif",
     emoji: "🎤",
-    color: "var(--color-island-kreatif)",
+    color: "#FF7043",
+    description: "Gambar bebas!",
+  },
+  // New 12
+  {
+    id: "labirin",
+    name: "Pulau Labirin Harta",
+    emoji: "🌋",
+    color: "#F44336",
+    description: "Jelajahi labirin!",
+  },
+  {
+    id: "riddle",
+    name: "Pulau Riddle Angin",
+    emoji: "🌪️",
+    color: "#00BCD4",
+    description: "Tebak tebakan!",
+  },
+  {
+    id: "bangun",
+    name: "Pulau Bangun Nusantara",
+    emoji: "🏗️",
+    color: "#795548",
+    description: "Bangun rumah!",
+  },
+  {
+    id: "irama",
+    name: "Pulau Irama Takbir",
+    emoji: "🎵",
+    color: "#E91E63",
+    description: "Ketuk irama!",
+  },
+  {
+    id: "eksperimen",
+    name: "Pulau Eksperimen Warna",
+    emoji: "🧪",
+    color: "#4CAF50",
+    description: "Campur warna!",
+  },
+  {
+    id: "kode",
+    name: "Pulau Kode Rahasia",
+    emoji: "🧩",
+    color: "#FF9800",
+    description: "Pecahkan sandi!",
+  },
+  {
+    id: "jejak",
+    name: "Pulau Jejak Misteri",
+    emoji: "🐾",
+    color: "#8BC34A",
+    description: "Ikuti jejak!",
+  },
+  {
+    id: "gelombang",
+    name: "Pulau Gelombang Angka",
+    emoji: "🌊",
+    color: "#2196F3",
+    description: "Tebak urutan!",
+  },
+  {
+    id: "bintang",
+    name: "Pulau Bintang Cepat",
+    emoji: "🌟",
+    color: "#FFC107",
+    description: "Tangkap bintang!",
+  },
+  {
+    id: "cerita",
+    name: "Pulau Cerita Interaktif",
+    emoji: "📖",
+    color: "#9C27B0",
+    description: "Pilih jalanmu!",
+  },
+  {
+    id: "urutan",
+    name: "Pulau Ingat Urutan",
+    emoji: "💡",
+    color: "#009688",
+    description: "Ingat urutan!",
+  },
+  {
+    id: "peta",
+    name: "Pulau Peta Rahasia",
+    emoji: "🧭",
+    color: "#607D8B",
+    description: "Susun peta!",
   },
 ];
 
+export function getIslandInfo(id: IslandId): IslandInfo {
+  return ALL_ISLANDS.find((i) => i.id === id) || ALL_ISLANDS[0];
+}
+
 export const COINS_PER_LEVEL = 10;
+export const MAX_STEPS = 5;
 
 // === Difficulty Configuration ===
 
@@ -84,6 +212,50 @@ export interface DifficultyConfig {
   creativePrompt: string | null;
   creativeTimerEnabled: boolean;
   creativeTimerSeconds: number;
+  // Maze
+  mazeSize: number;
+  mazeMoves: number;
+  mazeFog: boolean;
+  mazeMovingWalls: boolean;
+  // Riddles
+  riddleCount: number;
+  riddleChoices: number;
+  riddleVisual: boolean;
+  // Build
+  buildPieces: number;
+  buildRotation: boolean;
+  buildTimer: boolean;
+  // Rhythm
+  rhythmSpeed: number; // ms per beat
+  rhythmLanes: number;
+  rhythmCombo: boolean;
+  // Color Mix
+  colorMixColors: number;
+  colorMixRounds: number;
+  colorMixLimitedMoves: boolean;
+  // Secret Code
+  codeWordLength: number;
+  codeHints: number; // 0=all, 1=partial, 2=minimal
+  // Mystery Trail
+  trailRounds: number;
+  trailReverse: boolean;
+  // Number Wave
+  waveRounds: number;
+  waveMixedOps: boolean;
+  // Star Speed
+  starTargetSize: number;
+  starLives: number; // 0 = unlimited
+  starDuration: number; // seconds
+  // Story Branch
+  storyChoices: number;
+  storySmartPath: boolean;
+  // Simon Sequence
+  simonStart: number;
+  simonSpeed: number; // ms between flashes
+  // Secret Map
+  mapPieces: number;
+  mapFlip: boolean;
+  mapCompass: boolean;
 }
 
 export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
@@ -112,6 +284,50 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativePrompt: null,
     creativeTimerEnabled: false,
     creativeTimerSeconds: 0,
+    // Maze
+    mazeSize: 6,
+    mazeMoves: 30,
+    mazeFog: false,
+    mazeMovingWalls: false,
+    // Riddles
+    riddleCount: 3,
+    riddleChoices: 3,
+    riddleVisual: true,
+    // Build
+    buildPieces: 3,
+    buildRotation: false,
+    buildTimer: false,
+    // Rhythm
+    rhythmSpeed: 1200,
+    rhythmLanes: 3,
+    rhythmCombo: false,
+    // Color Mix
+    colorMixColors: 2,
+    colorMixRounds: 3,
+    colorMixLimitedMoves: false,
+    // Secret Code
+    codeWordLength: 3,
+    codeHints: 0,
+    // Mystery Trail
+    trailRounds: 4,
+    trailReverse: false,
+    // Number Wave
+    waveRounds: 4,
+    waveMixedOps: false,
+    // Star Speed
+    starTargetSize: 80,
+    starLives: 0,
+    starDuration: 30,
+    // Story Branch
+    storyChoices: 2,
+    storySmartPath: false,
+    // Simon
+    simonStart: 3,
+    simonSpeed: 800,
+    // Map
+    mapPieces: 4,
+    mapFlip: false,
+    mapCompass: false,
   },
   junior: {
     label: "SMP (Junior High)",
@@ -138,6 +354,50 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativePrompt: "Gambar Ketupat Lebaran! 🎋",
     creativeTimerEnabled: true,
     creativeTimerSeconds: 90,
+    // Maze
+    mazeSize: 8,
+    mazeMoves: 20,
+    mazeFog: false,
+    mazeMovingWalls: true,
+    // Riddles
+    riddleCount: 4,
+    riddleChoices: 4,
+    riddleVisual: false,
+    // Build
+    buildPieces: 5,
+    buildRotation: true,
+    buildTimer: false,
+    // Rhythm
+    rhythmSpeed: 800,
+    rhythmLanes: 3,
+    rhythmCombo: true,
+    // Color Mix
+    colorMixColors: 3,
+    colorMixRounds: 4,
+    colorMixLimitedMoves: true,
+    // Secret Code
+    codeWordLength: 4,
+    codeHints: 1,
+    // Mystery Trail
+    trailRounds: 5,
+    trailReverse: false,
+    // Number Wave
+    waveRounds: 5,
+    waveMixedOps: true,
+    // Star Speed
+    starTargetSize: 60,
+    starLives: 0,
+    starDuration: 30,
+    // Story Branch
+    storyChoices: 3,
+    storySmartPath: false,
+    // Simon
+    simonStart: 4,
+    simonSpeed: 600,
+    // Map
+    mapPieces: 6,
+    mapFlip: true,
+    mapCompass: false,
   },
   senior: {
     label: "SMA (Senior High)",
@@ -164,8 +424,54 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyLevel, DifficultyConfig> = {
     creativePrompt: "Gambar Masjid dengan detail! 🕌",
     creativeTimerEnabled: true,
     creativeTimerSeconds: 60,
+    // Maze
+    mazeSize: 10,
+    mazeMoves: 15,
+    mazeFog: true,
+    mazeMovingWalls: true,
+    // Riddles
+    riddleCount: 5,
+    riddleChoices: 4,
+    riddleVisual: false,
+    // Build
+    buildPieces: 7,
+    buildRotation: true,
+    buildTimer: true,
+    // Rhythm
+    rhythmSpeed: 500,
+    rhythmLanes: 4,
+    rhythmCombo: true,
+    // Color Mix
+    colorMixColors: 3,
+    colorMixRounds: 5,
+    colorMixLimitedMoves: true,
+    // Secret Code
+    codeWordLength: 5,
+    codeHints: 2,
+    // Mystery Trail
+    trailRounds: 6,
+    trailReverse: true,
+    // Number Wave
+    waveRounds: 6,
+    waveMixedOps: true,
+    // Star Speed
+    starTargetSize: 40,
+    starLives: 3,
+    starDuration: 30,
+    // Story Branch
+    storyChoices: 3,
+    storySmartPath: true,
+    // Simon
+    simonStart: 5,
+    simonSpeed: 450,
+    // Map
+    mapPieces: 9,
+    mapFlip: true,
+    mapCompass: true,
   },
 };
+
+// === Game State ===
 
 interface GameState {
   // Player
@@ -179,6 +485,11 @@ interface GameState {
   voucherCode: string;
   wheelSpun: boolean;
   scoreSubmitted: boolean;
+
+  // Path system
+  pathGraph: PathGraph;
+  stepsUsed: number;
+  availableNextIslands: IslandId[];
 
   // Settings
   soundEnabled: boolean;
@@ -198,10 +509,10 @@ interface GameState {
   resetGame: () => void;
 
   // Computed helpers
-  isIslandUnlocked: (island: IslandId) => boolean;
   isIslandCompleted: (island: IslandId) => boolean;
   getProgress: () => number;
   getDifficultyConfig: () => DifficultyConfig;
+  getStepsRemaining: () => number;
 }
 
 function generateVoucherCode(): string {
@@ -226,42 +537,77 @@ export const useGameStore = create<GameState>()(
       voucherCode: "",
       wheelSpun: false,
       scoreSubmitted: false,
+      pathGraph: [],
+      stepsUsed: 0,
+      availableNextIslands: [],
       soundEnabled: true,
 
       setPlayerName: (name) => set({ playerName: name }),
       setDifficulty: (d) => set({ difficulty: d }),
 
-      startAdventure: () => set({ currentPage: "worldmap" }),
+      startAdventure: () => {
+        // Generate a fresh random path and go to worldmap
+        const graph = generatePathGraph();
+        const start = getStartIsland(graph);
+        const nextOptions = getNextIslands(graph, start);
+
+        set({
+          currentPage: "worldmap",
+          pathGraph: graph,
+          stepsUsed: 0,
+          completedLevels: [],
+          coins: 0,
+          thrUnlocked: false,
+          voucherCode: "",
+          wheelSpun: false,
+          scoreSubmitted: false,
+          currentIsland: start,
+          availableNextIslands: nextOptions,
+        });
+      },
 
       navigateToIsland: (island) => {
-        const state = get();
-        if (state.isIslandUnlocked(island)) {
-          set({ currentIsland: island, currentPage: "game" });
-        }
+        set({ currentIsland: island, currentPage: "game" });
       },
 
       completeLevel: (island) => {
         const state = get();
-        if (!state.completedLevels.includes(island)) {
-          const config = DIFFICULTY_CONFIGS[state.difficulty];
-          const earnedCoins = Math.round(
-            COINS_PER_LEVEL * config.coinMultiplier,
-          );
-          const newCompleted = [...state.completedLevels, island];
-          const allDone = newCompleted.length === ISLANDS.length;
+        if (state.completedLevels.includes(island)) return;
+
+        const config = DIFFICULTY_CONFIGS[state.difficulty];
+        const earnedCoins = Math.round(COINS_PER_LEVEL * config.coinMultiplier);
+        const newCompleted = [...state.completedLevels, island];
+        const newSteps = state.stepsUsed + 1;
+        const allDone = newSteps >= MAX_STEPS;
+
+        if (allDone) {
           set({
             completedLevels: newCompleted,
-            coins: state.coins + earnedCoins,
-            thrUnlocked: allDone,
-            currentPage: allDone ? "thr-reveal" : "worldmap",
+            coins: Math.min(100, state.coins + earnedCoins),
+            stepsUsed: newSteps,
+            thrUnlocked: true,
+            currentPage: "thr-reveal",
             currentIsland: null,
+            availableNextIslands: [],
+          });
+        } else {
+          // Find next options from this island
+          const nextOptions = getNextIslands(state.pathGraph, island);
+          set({
+            completedLevels: newCompleted,
+            coins: Math.min(100, state.coins + earnedCoins),
+            stepsUsed: newSteps,
+            currentPage: "worldmap",
+            currentIsland: island, // stay on current for path display
+            availableNextIslands: nextOptions,
           });
         }
       },
 
-      addCoins: (amount) => set((s) => ({ coins: s.coins + amount })),
+      addCoins: (amount) =>
+        set((s) => ({ coins: Math.min(100, s.coins + amount) })),
 
-      setPage: (page) => set({ currentPage: page, currentIsland: null }),
+      setPage: (page) => set({ currentPage: page }),
 
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
 
@@ -286,15 +632,10 @@ export const useGameStore = create<GameState>()(
           voucherCode: "",
           wheelSpun: false,
           scoreSubmitted: false,
+          pathGraph: [],
+          stepsUsed: 0,
+          availableNextIslands: [],
         }),
-
-      isIslandUnlocked: (island) => {
-        const state = get();
-        const idx = ISLANDS.findIndex((i) => i.id === island);
-        if (idx === 0) return true;
-        const prevIsland = ISLANDS[idx - 1];
-        return state.completedLevels.includes(prevIsland.id);
-      },
 
       isIslandCompleted: (island) => {
         return get().completedLevels.includes(island);
@@ -302,11 +643,15 @@ export const useGameStore = create<GameState>()(
 
       getProgress: () => {
         const state = get();
-        return (state.completedLevels.length / ISLANDS.length) * 100;
+        return (state.stepsUsed / MAX_STEPS) * 100;
       },
 
       getDifficultyConfig: () => {
         return DIFFICULTY_CONFIGS[get().difficulty];
+      },
+
+      getStepsRemaining: () => {
+        return MAX_STEPS - get().stepsUsed;
       },
     }),
     {
@@ -314,3 +659,6 @@ export const useGameStore = create<GameState>()(
     },
   ),
 );
+
+// Keep ISLANDS export for backward compatibility (used in some components)
+export const ISLANDS = ALL_ISLANDS;
