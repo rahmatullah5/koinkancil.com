@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { GameLayout, CompletionOverlay } from "../components/SharedComponents";
+import {
+  GameLayout,
+  CompletionOverlay,
+  GameTimer,
+  TimeUpOverlay,
+} from "../components/SharedComponents";
 import { useGameStore, COINS_PER_LEVEL } from "../stores/gameStore";
 import { soundManager } from "../utils/soundManager";
 
@@ -28,26 +33,31 @@ function createCards(pairsCount: number): Card[] {
 }
 
 export function MemoryGame() {
-  const { setPage, completeLevel } = useGameStore();
-  const [cards, setCards] = useState<Card[]>(() => createCards(6));
+  const { setPage, completeLevel, getDifficultyConfig } = useGameStore();
+  const config = getDifficultyConfig();
+  const totalPairs = config.memoryPairs;
+  const columns = config.memoryColumns;
+
+  const [cards, setCards] = useState<Card[]>(() => createCards(totalPairs));
   const [selected, setSelected] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [matchedCount, setMatchedCount] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const totalPairs = 6;
+  const [timeUp, setTimeUp] = useState(false);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeElapsed((t) => t + 1);
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, []);
+  }, [key]);
 
   const handleCardClick = useCallback(
     (id: number) => {
-      if (selected.length >= 2) return;
+      if (selected.length >= 2 || showCompletion || timeUp) return;
 
       const card = cards.find((c) => c.id === id);
       if (!card || card.flipped || card.matched) return;
@@ -68,7 +78,6 @@ export function MemoryGame() {
         const second = newCards.find((c) => c.id === secondId)!;
 
         if (first.icon === second.icon) {
-          // Match!
           soundManager.cardMatch();
           const matched = newCards.map((c) =>
             c.id === firstId || c.id === secondId ? { ...c, matched: true } : c,
@@ -86,7 +95,6 @@ export function MemoryGame() {
             }, 500);
           }
         } else {
-          // No match
           setTimeout(() => {
             setCards((prev) =>
               prev.map((c) =>
@@ -100,8 +108,20 @@ export function MemoryGame() {
         }
       }
     },
-    [cards, selected, matchedCount],
+    [cards, selected, matchedCount, totalPairs, showCompletion, timeUp],
   );
+
+  const handleRetry = () => {
+    clearInterval(timerRef.current);
+    setCards(createCards(totalPairs));
+    setSelected([]);
+    setMoves(0);
+    setMatchedCount(0);
+    setTimeElapsed(0);
+    setTimeUp(false);
+    setShowCompletion(false);
+    setKey((k) => k + 1);
+  };
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -116,6 +136,27 @@ export function MemoryGame() {
         animate={{ opacity: 1, y: 0 }}
         style={{ textAlign: "center", maxWidth: "500px", width: "100%" }}
       >
+        {/* Timer (if enabled for this difficulty) */}
+        {config.memoryTimerEnabled && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "16px",
+            }}
+          >
+            <GameTimer
+              key={key}
+              seconds={config.memoryTimerSeconds}
+              onTimeUp={() => {
+                clearInterval(timerRef.current);
+                setTimeUp(true);
+              }}
+              paused={showCompletion || timeUp}
+            />
+          </div>
+        )}
+
         {/* Stats */}
         <div
           style={{
@@ -188,9 +229,9 @@ export function MemoryGame() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
             gap: "10px",
-            maxWidth: "360px",
+            maxWidth: columns === 5 ? "450px" : "360px",
             margin: "0 auto",
           }}
         >
@@ -234,6 +275,11 @@ export function MemoryGame() {
         show={showCompletion}
         coins={COINS_PER_LEVEL}
         onContinue={() => completeLevel("memori")}
+      />
+      <TimeUpOverlay
+        show={timeUp}
+        onRetry={handleRetry}
+        onQuit={() => setPage("worldmap")}
       />
     </GameLayout>
   );

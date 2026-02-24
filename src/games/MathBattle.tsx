@@ -2,20 +2,26 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GameLayout, CompletionOverlay } from "../components/SharedComponents";
+import {
+  GameLayout,
+  CompletionOverlay,
+  GameTimer,
+  TimeUpOverlay,
+} from "../components/SharedComponents";
 import { useGameStore, COINS_PER_LEVEL } from "../stores/gameStore";
 import { soundManager } from "../utils/soundManager";
 
-const MONSTERS = ["👾", "👹", "🐲", "👻", "🤖"];
-const ROUNDS = 5;
+const MONSTERS = ["👾", "👹", "🐲", "👻", "🤖", "🧟", "👿"];
 
-function generateMathQ(age: number): {
+function generateMathQ(
+  maxNum: number,
+  ops: string[],
+  optionCount: number,
+): {
   question: string;
   answer: number;
   options: number[];
 } {
-  const maxNum = age <= 7 ? 10 : age <= 10 ? 20 : 50;
-  const ops = age <= 7 ? ["+"] : age <= 10 ? ["+", "-"] : ["+", "-", "×"];
   const op = ops[Math.floor(Math.random() * ops.length)];
 
   let a: number, b: number, answer: number;
@@ -27,9 +33,14 @@ function generateMathQ(age: number): {
       answer = a - b;
       break;
     case "×":
-      a = Math.floor(Math.random() * 10) + 1;
-      b = Math.floor(Math.random() * 10) + 1;
+      a = Math.floor(Math.random() * Math.min(maxNum, 12)) + 1;
+      b = Math.floor(Math.random() * Math.min(maxNum, 12)) + 1;
       answer = a * b;
+      break;
+    case "÷":
+      b = Math.floor(Math.random() * 10) + 2;
+      answer = Math.floor(Math.random() * 10) + 1;
+      a = b * answer;
       break;
     default: // +
       a = Math.floor(Math.random() * maxNum) + 1;
@@ -37,10 +48,9 @@ function generateMathQ(age: number): {
       answer = a + b;
   }
 
-  // Generate wrong options
   const wrongSet = new Set<number>();
-  while (wrongSet.size < 2) {
-    const offset = Math.floor(Math.random() * 6) + 1;
+  while (wrongSet.size < optionCount - 1) {
+    const offset = Math.floor(Math.random() * 8) + 1;
     const wrong =
       Math.random() > 0.5 ? answer + offset : Math.max(0, answer - offset);
     if (wrong !== answer) wrongSet.add(wrong);
@@ -52,31 +62,38 @@ function generateMathQ(age: number): {
 }
 
 export function MathBattle() {
-  const { setPage, completeLevel, playerAge } = useGameStore();
+  const { setPage, completeLevel, getDifficultyConfig } = useGameStore();
+  const config = getDifficultyConfig();
   const [round, setRound] = useState(0);
-  const [problem, setProblem] = useState(() => generateMathQ(playerAge));
+  const [problem, setProblem] = useState(() =>
+    generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+  );
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [monster, setMonster] = useState(MONSTERS[0]);
   const [monsterHp, setMonsterHp] = useState(100);
   const [monsterDefeated, setMonsterDefeated] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
+  const [key, setKey] = useState(0);
 
   const nextRound = useCallback(() => {
-    if (round + 1 >= ROUNDS) {
+    if (round + 1 >= config.mathRounds) {
       setShowCompletion(true);
       soundManager.levelComplete();
     } else {
       setRound((r) => r + 1);
-      setProblem(generateMathQ(playerAge));
+      setProblem(
+        generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+      );
       setFeedback(null);
       setMonster(MONSTERS[(round + 1) % MONSTERS.length]);
       setMonsterHp(100);
       setMonsterDefeated(false);
     }
-  }, [round, playerAge]);
+  }, [round, config]);
 
   const handleAnswer = (choice: number) => {
-    if (feedback) return;
+    if (feedback || showCompletion || timeUp) return;
     if (choice === problem.answer) {
       setFeedback("correct");
       setMonsterHp(0);
@@ -91,6 +108,20 @@ export function MathBattle() {
     }
   };
 
+  const handleRetry = () => {
+    setRound(0);
+    setProblem(
+      generateMathQ(config.mathMaxNum, config.mathOps, config.mathOptions),
+    );
+    setFeedback(null);
+    setMonster(MONSTERS[0]);
+    setMonsterHp(100);
+    setMonsterDefeated(false);
+    setTimeUp(false);
+    setShowCompletion(false);
+    setKey((k) => k + 1);
+  };
+
   return (
     <GameLayout title="🔢 Pulau Matematika" onBack={() => setPage("worldmap")}>
       <motion.div
@@ -98,31 +129,40 @@ export function MathBattle() {
         animate={{ opacity: 1, y: 0 }}
         style={{ textAlign: "center", maxWidth: "500px", width: "100%" }}
       >
-        {/* Round indicator */}
+        {/* Timer + Round indicator */}
         <div
           style={{
             display: "flex",
-            gap: "8px",
             justifyContent: "center",
+            alignItems: "center",
+            gap: "24px",
             marginBottom: "20px",
           }}
         >
-          {Array.from({ length: ROUNDS }, (_, i) => (
-            <div
-              key={i}
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                background:
-                  i < round
-                    ? "var(--color-success)"
-                    : i === round
-                      ? "var(--color-accent)"
-                      : "rgba(255,255,255,0.2)",
-              }}
-            />
-          ))}
+          <GameTimer
+            key={key}
+            seconds={config.timerSeconds}
+            onTimeUp={() => setTimeUp(true)}
+            paused={showCompletion || timeUp}
+          />
+          <div style={{ display: "flex", gap: "8px" }}>
+            {Array.from({ length: config.mathRounds }, (_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  background:
+                    i < round
+                      ? "var(--color-success)"
+                      : i === round
+                        ? "var(--color-accent)"
+                        : "rgba(255,255,255,0.2)",
+                }}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Monster */}
@@ -141,10 +181,7 @@ export function MathBattle() {
                 ? { duration: 0.3 }
                 : { duration: 2, repeat: Infinity, ease: "easeInOut" }
           }
-          style={{
-            fontSize: "5rem",
-            marginBottom: "8px",
-          }}
+          style={{ fontSize: "5rem", marginBottom: "8px" }}
         >
           {monster}
         </motion.div>
@@ -207,7 +244,6 @@ export function MathBattle() {
           >
             {problem.question}
           </p>
-          {/* Triangle */}
           <div
             style={{
               position: "absolute",
@@ -296,6 +332,11 @@ export function MathBattle() {
         show={showCompletion}
         coins={COINS_PER_LEVEL}
         onContinue={() => completeLevel("matematika")}
+      />
+      <TimeUpOverlay
+        show={timeUp}
+        onRetry={handleRetry}
+        onQuit={() => setPage("worldmap")}
       />
     </GameLayout>
   );

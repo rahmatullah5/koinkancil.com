@@ -1,8 +1,8 @@
 /** @format */
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore } from "../stores/gameStore";
-import { useEffect, useState } from "react";
+import { useGameStore, DIFFICULTY_CONFIGS } from "../stores/gameStore";
+import { useEffect, useState, useRef } from "react";
 
 export function CoinCounter() {
   const coins = useGameStore((s) => s.coins);
@@ -45,6 +45,119 @@ export function CoinCounter() {
       >
         Koin
       </span>
+    </motion.div>
+  );
+}
+
+export function DifficultyBadge() {
+  const difficulty = useGameStore((s) => s.difficulty);
+  const config = DIFFICULTY_CONFIGS[difficulty];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: `${config.color}22`,
+        border: `2px solid ${config.color}66`,
+        borderRadius: "50px",
+        padding: "6px 14px",
+        fontWeight: 700,
+        fontSize: "0.85rem",
+        color: config.color,
+      }}
+    >
+      <span>{config.emoji}</span>
+      <span>{config.shortLabel}</span>
+      <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+        ×{config.coinMultiplier}
+      </span>
+    </div>
+  );
+}
+
+export function GameTimer({
+  seconds,
+  onTimeUp,
+  paused = false,
+}: {
+  seconds: number;
+  onTimeUp: () => void;
+  paused?: boolean;
+}) {
+  const [remaining, setRemaining] = useState(seconds);
+  const onTimeUpRef = useRef(onTimeUp);
+  onTimeUpRef.current = onTimeUp;
+  const hasTriggered = useRef(false);
+
+  useEffect(() => {
+    if (paused || remaining <= 0) return;
+    const timer = setInterval(() => {
+      setRemaining((r) => {
+        const next = r - 1;
+        if (next <= 0 && !hasTriggered.current) {
+          hasTriggered.current = true;
+          setTimeout(() => onTimeUpRef.current(), 0);
+        }
+        return Math.max(0, next);
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [paused, remaining]);
+
+  const pct = (remaining / seconds) * 100;
+  const color = pct > 50 ? "#6BCB77" : pct > 25 ? "#FFD93D" : "#FF6B6B";
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+
+  return (
+    <motion.div
+      animate={remaining <= 10 ? { scale: [1, 1.05, 1] } : {}}
+      transition={remaining <= 10 ? { duration: 0.5, repeat: Infinity } : {}}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "6px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontWeight: 800,
+          fontSize: remaining <= 10 ? "1.3rem" : "1.1rem",
+          color,
+          transition: "all 0.3s",
+        }}
+      >
+        <span>⏱</span>
+        <span>
+          {mins}:{secs.toString().padStart(2, "0")}
+        </span>
+      </div>
+      <div
+        style={{
+          width: "120px",
+          height: "6px",
+          background: "rgba(255,255,255,0.1)",
+          borderRadius: "3px",
+          overflow: "hidden",
+        }}
+      >
+        <motion.div
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.5 }}
+          style={{
+            height: "100%",
+            background: color,
+            borderRadius: "3px",
+            transition: "background 0.3s",
+          }}
+        />
+      </div>
     </motion.div>
   );
 }
@@ -105,6 +218,8 @@ export function GameLayout({
           padding: "16px 24px",
           background: "rgba(0,0,0,0.3)",
           backdropFilter: "blur(10px)",
+          gap: "12px",
+          flexWrap: "wrap",
         }}
       >
         <motion.button
@@ -129,15 +244,18 @@ export function GameLayout({
           ← Kembali
         </motion.button>
 
-        <h2
-          style={{
-            fontSize: "1.2rem",
-            fontWeight: 800,
-            color: "var(--color-text-accent)",
-          }}
-        >
-          {title}
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <DifficultyBadge />
+          <h2
+            style={{
+              fontSize: "1.2rem",
+              fontWeight: 800,
+              color: "var(--color-text-accent)",
+            }}
+          >
+            {title}
+          </h2>
+        </div>
 
         <CoinCounter />
       </div>
@@ -207,6 +325,101 @@ export function FloatingParticles() {
   );
 }
 
+export function TimeUpOverlay({
+  show,
+  onRetry,
+  onQuit,
+}: {
+  show: boolean;
+  onRetry: () => void;
+  onQuit: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -10 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", damping: 15 }}
+            style={{
+              background:
+                "linear-gradient(135deg, var(--color-bg-card), var(--color-bg-soft))",
+              border: "2px solid rgba(255,107,107,0.3)",
+              borderRadius: "24px",
+              padding: "48px",
+              textAlign: "center",
+              maxWidth: "400px",
+            }}
+          >
+            <div style={{ fontSize: "4rem", marginBottom: "16px" }}>⏰</div>
+            <h2
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: 900,
+                marginBottom: "8px",
+                color: "var(--color-danger)",
+              }}
+            >
+              Waktu Habis!
+            </h2>
+            <p
+              style={{
+                color: "var(--color-text-secondary)",
+                marginBottom: "24px",
+              }}
+            >
+              Jangan menyerah, coba lagi! 💪
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <motion.button
+                className="btn-accent"
+                onClick={onRetry}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🔄 Coba Lagi
+              </motion.button>
+              <motion.button
+                onClick={onQuit}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "12px",
+                  padding: "12px 24px",
+                  color: "white",
+                  cursor: "pointer",
+                  fontFamily: "Nunito, sans-serif",
+                  fontWeight: 700,
+                }}
+              >
+                🗺️ Ke Peta
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export function CompletionOverlay({
   show,
   coins,
@@ -216,6 +429,10 @@ export function CompletionOverlay({
   coins: number;
   onContinue: () => void;
 }) {
+  const difficulty = useGameStore((s) => s.difficulty);
+  const config = DIFFICULTY_CONFIGS[difficulty];
+  const earnedCoins = Math.round(coins * config.coinMultiplier);
+
   return (
     <AnimatePresence>
       {show && (
@@ -279,11 +496,24 @@ export function CompletionOverlay({
                 fontSize: "2rem",
                 fontWeight: 900,
                 color: "var(--color-accent)",
-                marginBottom: "24px",
+                marginBottom: "8px",
               }}
             >
-              +{coins} 💰 Koin THR
+              +{earnedCoins} 💰 Koin THR
             </motion.div>
+            {config.coinMultiplier > 1 && (
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  color: config.color,
+                  marginBottom: "16px",
+                  fontWeight: 700,
+                }}
+              >
+                {config.emoji} Bonus {config.shortLabel}: ×
+                {config.coinMultiplier}
+              </div>
+            )}
             <motion.button
               className="btn-accent"
               onClick={onContinue}

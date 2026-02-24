@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore } from "../stores/gameStore";
+import {
+  useGameStore,
+  DifficultyLevel,
+  DIFFICULTY_CONFIGS,
+} from "../stores/gameStore";
 import { soundManager } from "../utils/soundManager";
 import { FloatingParticles } from "../components/SharedComponents";
 
@@ -20,24 +24,27 @@ function CloudSVG({ style }: { style: React.CSSProperties }) {
   );
 }
 
+const DIFFICULTIES: DifficultyLevel[] = ["elementary", "junior", "senior"];
+
 export function LandingPage() {
   const {
     setPlayerName,
-    setPlayerAge,
+    setDifficulty,
     startAdventure,
     soundEnabled,
     toggleSound,
     playerName,
   } = useGameStore();
   const [name, setName] = useState(playerName);
-  const [age, setAge] = useState(8);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<DifficultyLevel>("elementary");
   const [showParentInfo, setShowParentInfo] = useState(false);
   const [step, setStep] = useState<"intro" | "form">("intro");
 
   const handleStart = () => {
     if (name.trim()) {
       setPlayerName(name.trim());
-      setPlayerAge(age);
+      setDifficulty(selectedDifficulty);
       soundManager.setEnabled(soundEnabled);
       soundManager.buttonClick();
       startAdventure();
@@ -89,10 +96,7 @@ export function LandingPage() {
             top: `${15 + (i % 3) * 20}%`,
             opacity: 0.3,
           }}
-          animate={{
-            y: [0, -15, 0],
-            rotate: [0, 5, -5, 0],
-          }}
+          animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
           transition={{
             duration: 3 + i * 0.5,
             repeat: Infinity,
@@ -159,11 +163,7 @@ export function LandingPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        style={{
-          textAlign: "center",
-          zIndex: 5,
-          maxWidth: "600px",
-        }}
+        style={{ textAlign: "center", zIndex: 5, maxWidth: "600px" }}
       >
         {/* Logo/Mascot */}
         <motion.div
@@ -216,7 +216,6 @@ export function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              {/* Story intro */}
               <motion.div
                 style={{
                   background: "rgba(255,255,255,0.05)",
@@ -299,7 +298,7 @@ export function LandingPage() {
                   fontFamily: "Nunito, sans-serif",
                   fontWeight: 700,
                   outline: "none",
-                  marginBottom: "16px",
+                  marginBottom: "24px",
                   transition: "border-color 0.3s",
                 }}
                 onFocus={(e) =>
@@ -312,39 +311,88 @@ export function LandingPage() {
                 autoFocus
               />
 
+              {/* Difficulty Selector */}
               <div style={{ marginBottom: "24px" }}>
                 <label
                   style={{
                     display: "block",
-                    marginBottom: "8px",
+                    marginBottom: "12px",
                     color: "var(--color-text-secondary)",
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    fontSize: "1rem",
                   }}
                 >
-                  🎂 Umur: {age} tahun
+                  🎯 Pilih Tingkat Kesulitan:
                 </label>
-                <input
-                  type="range"
-                  min={5}
-                  max={15}
-                  value={age}
-                  onChange={(e) => setAge(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    accentColor: "var(--color-primary)",
-                  }}
-                />
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    color: "var(--color-text-secondary)",
-                    fontSize: "0.8rem",
-                    marginTop: "4px",
+                    gap: "10px",
+                    justifyContent: "center",
                   }}
                 >
-                  <span>5</span>
-                  <span>15</span>
+                  {DIFFICULTIES.map((d) => {
+                    const cfg = DIFFICULTY_CONFIGS[d];
+                    const isSelected = selectedDifficulty === d;
+                    return (
+                      <motion.button
+                        key={d}
+                        onClick={() => {
+                          setSelectedDifficulty(d);
+                          soundManager.buttonClick();
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 10px",
+                          borderRadius: "16px",
+                          cursor: "pointer",
+                          fontFamily: "Nunito, sans-serif",
+                          fontWeight: 700,
+                          fontSize: "0.85rem",
+                          outline: "none",
+                          transition: "all 0.3s",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: isSelected
+                            ? `${cfg.color}22`
+                            : "rgba(255,255,255,0.05)",
+                          border: isSelected
+                            ? `2px solid ${cfg.color}`
+                            : "2px solid rgba(255,255,255,0.1)",
+                          color: isSelected
+                            ? cfg.color
+                            : "var(--color-text-secondary)",
+                          boxShadow: isSelected
+                            ? `0 0 20px ${cfg.color}33`
+                            : "none",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.5rem" }}>{cfg.emoji}</span>
+                        <span style={{ fontWeight: 900, fontSize: "0.95rem" }}>
+                          {cfg.shortLabel}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                          {cfg.description}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            background: isSelected
+                              ? `${cfg.color}33`
+                              : "rgba(255,255,255,0.08)",
+                            padding: "2px 8px",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          Koin ×{cfg.coinMultiplier}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
 

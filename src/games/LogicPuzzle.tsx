@@ -2,38 +2,38 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GameLayout, CompletionOverlay } from "../components/SharedComponents";
+import {
+  GameLayout,
+  CompletionOverlay,
+  GameTimer,
+  TimeUpOverlay,
+} from "../components/SharedComponents";
 import { useGameStore, COINS_PER_LEVEL } from "../stores/gameStore";
 import { soundManager } from "../utils/soundManager";
 
 const SHAPES = ["🟥", "🟦", "🟨", "🟩", "🟪", "🟧"];
-const PATTERNS_COUNT = 3; // number of rounds to complete
 
-function generatePattern(): {
+function generatePattern(
+  shapeCount: number,
+  patternLength: number,
+): {
   sequence: string[];
   answer: string;
   options: string[];
 } {
-  // Pick 2-3 shapes for the pattern
-  const numShapes = 2 + Math.floor(Math.random() * 2);
   const selectedShapes = [...SHAPES]
     .sort(() => Math.random() - 0.5)
-    .slice(0, numShapes);
+    .slice(0, shapeCount);
 
-  // Create a repeating pattern
-  const patternLength = 6;
   const sequence: string[] = [];
   for (let i = 0; i < patternLength; i++) {
     sequence.push(selectedShapes[i % selectedShapes.length]);
   }
 
-  // The answer is the last element
   const answer = sequence[patternLength - 1];
-  // Replace last element with ❓
   const displaySequence = [...sequence];
   displaySequence[patternLength - 1] = "❓";
 
-  // Create options (answer + 2-3 wrong ones)
   const wrongOptions = SHAPES.filter((s) => s !== answer)
     .sort(() => Math.random() - 0.5)
     .slice(0, 3);
@@ -43,25 +43,32 @@ function generatePattern(): {
 }
 
 export function LogicPuzzle() {
-  const { setPage, completeLevel } = useGameStore();
+  const { setPage, completeLevel, getDifficultyConfig } = useGameStore();
+  const config = getDifficultyConfig();
   const [round, setRound] = useState(0);
-  const [pattern, setPattern] = useState(generatePattern);
+  const [pattern, setPattern] = useState(() =>
+    generatePattern(config.logicShapeCount, config.logicPatternLength),
+  );
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
+  const [key, setKey] = useState(0); // for resetting
 
   const nextRound = useCallback(() => {
-    if (round + 1 >= PATTERNS_COUNT) {
+    if (round + 1 >= config.logicRounds) {
       setShowCompletion(true);
       soundManager.levelComplete();
     } else {
       setRound((r) => r + 1);
-      setPattern(generatePattern());
+      setPattern(
+        generatePattern(config.logicShapeCount, config.logicPatternLength),
+      );
       setFeedback(null);
     }
-  }, [round]);
+  }, [round, config]);
 
   const handleChoice = (choice: string) => {
-    if (feedback) return;
+    if (feedback || showCompletion || timeUp) return;
     if (choice === pattern.answer) {
       setFeedback("correct");
       soundManager.correctAnswer();
@@ -73,43 +80,59 @@ export function LogicPuzzle() {
     }
   };
 
+  const handleRetry = () => {
+    setRound(0);
+    setPattern(
+      generatePattern(config.logicShapeCount, config.logicPatternLength),
+    );
+    setFeedback(null);
+    setTimeUp(false);
+    setShowCompletion(false);
+    setKey((k) => k + 1);
+  };
+
   return (
     <GameLayout title="🧠 Pulau Logika" onBack={() => setPage("worldmap")}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{
-          textAlign: "center",
-          maxWidth: "600px",
-          width: "100%",
-        }}
+        style={{ textAlign: "center", maxWidth: "600px", width: "100%" }}
       >
-        {/* Progress dots */}
+        {/* Timer + Progress */}
         <div
           style={{
             display: "flex",
-            gap: "8px",
             justifyContent: "center",
-            marginBottom: "24px",
+            alignItems: "center",
+            gap: "24px",
+            marginBottom: "20px",
           }}
         >
-          {Array.from({ length: PATTERNS_COUNT }, (_, i) => (
-            <div
-              key={i}
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                background:
-                  i < round
-                    ? "var(--color-success)"
-                    : i === round
-                      ? "var(--color-accent)"
-                      : "rgba(255,255,255,0.2)",
-                transition: "all 0.3s",
-              }}
-            />
-          ))}
+          <GameTimer
+            key={key}
+            seconds={config.timerSeconds}
+            onTimeUp={() => setTimeUp(true)}
+            paused={showCompletion || timeUp}
+          />
+          <div style={{ display: "flex", gap: "8px" }}>
+            {Array.from({ length: config.logicRounds }, (_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  background:
+                    i < round
+                      ? "var(--color-success)"
+                      : i === round
+                        ? "var(--color-accent)"
+                        : "rgba(255,255,255,0.2)",
+                  transition: "all 0.3s",
+                }}
+              />
+            ))}
+          </div>
         </div>
 
         <h3
@@ -229,6 +252,11 @@ export function LogicPuzzle() {
         show={showCompletion}
         coins={COINS_PER_LEVEL}
         onContinue={() => completeLevel("logika")}
+      />
+      <TimeUpOverlay
+        show={timeUp}
+        onRetry={handleRetry}
+        onQuit={() => setPage("worldmap")}
       />
     </GameLayout>
   );
